@@ -77,7 +77,6 @@
         </div>
       </div>
     </div>
-    <SparcsUrls/>
   </TheLayout>
 </template>
 
@@ -86,7 +85,6 @@ import { fetchHome } from '@/api'
 import { fetchWithProgress } from './helper.js'
 import TheLayout from '@/components/TheLayout.vue'
 import Timeago from '@/components/Timeago.vue'
-import SparcsUrls from '@/components/SparcsUrls.vue'
 
 export default {
   name: 'home',
@@ -104,7 +102,7 @@ export default {
     const [ home ] = await fetchWithProgress([ fetchHome() ])
     next(vm => { vm.home = home })
   },
-  components: { TheLayout, Timeago, SparcsUrls }
+  components: { TheLayout, Timeago }
 }
 </script>
 
