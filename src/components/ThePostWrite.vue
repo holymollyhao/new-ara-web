@@ -1,9 +1,8 @@
 <template>
   <div>
     <h1 id="title"> 글쓰기 </h1>
-
     <div class="title-wrapper">
-      <i 
+      <i
         class="material-icons title-warning"
         v-if="isTitleEmpty && !title">
         warning
@@ -21,7 +20,7 @@
       :class="{
         'is-placeholder': !boardId,
       }" >
-      <i 
+      <i
         class="material-icons board-warning"
         v-if="isBoardEmpty && !boardId">
         warning
@@ -44,15 +43,17 @@
         ref="textEditor"
         editable="true"
         :content="initialPostContent"
+        @attach-files="attachFiles"
       />
     </div>
 
     <div class="attachment-input">
-      <input
-        type="file"
+      <Attachments
+        ref="attachments"
         multiple
-        @change="attachFiles"
-      />
+        @add="addAttachments"
+        @delete="deleteAttachment">
+      </Attachments>
     </div>
     <button
       @click="savePostByThePostWrite"
@@ -66,7 +67,8 @@
 
 <script>
 import { mapState, mapGetters } from 'vuex'
-import TextEditor from '../components/TheTextEditor'
+import Attachments from '@/components/TheAttachments'
+import TextEditor from '@/components/TheTextEditor'
 
 export default {
   name: 'the-post-write',
@@ -76,20 +78,20 @@ export default {
       boardId: '',
       title: '',
       content: '',
-      attachment: null,
+      loaded: true
     }
   },
   computed: {
     ...mapState([ 'boardList' ]),
     ...mapGetters([ 'getIdBySlug' ]),
-    titlePlaceholder: function() {
+    titlePlaceholder: function () {
       if (this.isTitleEmpty) {
         return '제목을 입력하세요'
       } else {
         return '제목'
       }
     },
-    initialPostContent() {
+    initialPostContent () {
       return this.post ? this.post.content : null
     }
   },
@@ -98,31 +100,72 @@ export default {
       this.boardId = this.post.parent_board.id
       this.title = this.post.title
       this.content = this.post.content
+      this.loaded = false
     }
-    const { board_slug: boardSlug } = this.$route.query
-    if (boardSlug) {
+    const { board } = this.$route.query
+    if (board) {
       /* 글 수정인데 글의 parent board와 url query의 board가 다르면 url query의 board를 따른다. */
-      this.boardId = this.getIdBySlug(boardSlug)
+      this.boardId = this.getIdBySlug(board)
     }
   },
+
+  async mounted () {
+    if (this.post) {
+      await this.$refs.attachments.init(this.post.attachments)
+    }
+
+    this.loaded = true
+  },
+
   methods: {
-    attachFiles (e) {
-      this.attachments = [...e.target.files]
+    attachFiles (files) {
+      this.$refs.attachments.handleUpload(files)
     },
-    savePostByThePostWrite() {
-      const { title, boradId, attachments } = this;
-      const postContent = JSON.stringify(this.$refs.textEditor.getContent())
-      this.$emit('save-post', 
+
+    addAttachments (attachments) {
+      attachments.forEach(file => {
+        if (file.type === 'image') {
+          this.$refs.textEditor.addImageByFile(file)
+        }
+      })
+    },
+
+    deleteAttachment (file) {
+      if (file.uploaded) {
+        // TODO delete file from server
+      }
+
+      if (file.type === 'image') {
+        this.$refs.textEditor.removeImageByFile(file)
+      }
+    },
+
+    savePostByThePostWrite () {
+      if (!this.loaded) {
+        // TODO add error support
+        alert("Please wait for a sec!")
+        return
+      }
+
+      const { title, boardId } = this
+      this.$emit('save-post',
         {
-          title: this.title, 
-          content: postContent,
-          boardId: this.boardId,
-          attachments: this.attachments,
+          title,
+          boardId,
+          attachments: this.$refs.attachments.files
         }
       )
+    },
+
+    updateAttachments (attachmentUpdate) {
+      this.$refs.textEditor.applyImageUpload(attachmentUpdate)
+    },
+
+    getContent () {
+      return this.$refs.textEditor.getContent()
     }
   },
-  components: { TextEditor }
+  components: { Attachments, TextEditor }
 }
 </script>
 
